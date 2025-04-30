@@ -40,11 +40,11 @@ For more visual demos, please visit our [**Page**](https://toto222.github.io/DIC
 - `ffmpeg` requires to be installed.
 - `PyTorch`: make sure to select the appropriate CUDA version based on your hardware, for example,
 ```shell
-  pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu118
+pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu118
 ```
 - `Dependencies`:
 ```shell
-  pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 - All models are stored in `checkpoints` by default, and the file structure is as follows:
 ```shell
@@ -66,11 +66,11 @@ DICE-Talk
 ```
 Download by `huggingface-cli` follow
 ```shell
-  python3 -m pip install "huggingface_hub[cli]"
+python3 -m pip install "huggingface_hub[cli]"
 
-  huggingface-cli download EEEELY/DICE-Talk --local-dir  checkpoints
-  huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --local-dir  checkpoints/stable-video-diffusion-img2vid-xt
-  huggingface-cli download openai/whisper-tiny --local-dir checkpoints/whisper-tiny
+huggingface-cli download EEEELY/DICE-Talk --local-dir  checkpoints
+huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --local-dir  checkpoints/stable-video-diffusion-img2vid-xt
+huggingface-cli download openai/whisper-tiny --local-dir checkpoints/whisper-tiny
 ```
 
 or manully download [pretrain model](https://drive.google.com/drive/folders/1l1Ojt-4yMfYQCCnNs_NgkzQC2-OoAksN?usp=drive_link), [svd-xt](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt) and [whisper-tiny](https://huggingface.co/openai/whisper-tiny) to `checkpoints/`.
@@ -78,16 +78,17 @@ or manully download [pretrain model](https://drive.google.com/drive/folders/1l1O
 
 ### Run demo
 ```shell
-  python3 demo.py --image_path '/path/to/input_image' --audio_path '/path/to/input_audio'\ 
-    --emotion_path '/path/to/input_emotion' --output_path '/path/to/output_video'
+python3 demo.py --image_path '/path/to/input_image' --audio_path '/path/to/input_audio'\ 
+  --emotion_path '/path/to/input_emotion' --output_path '/path/to/output_video'
 ```
 
 ### Run GUI
 ```shell
-  python3 gradio_app.py
+python3 gradio_app.py
 ```
 
-<img width="720" alt="gradio_demo" src="https://github.com/user-attachments/assets/44c0f42a-5942-4293-b0d4-88b870882f84" />
+<img width="720" alt="gradio_demo" src="https://github.com/user-attachments/assets/7cdb2e6b-53c4-43e4-b6df-2b25db10ea8d" />
+
 
 
 On the left you need to:
