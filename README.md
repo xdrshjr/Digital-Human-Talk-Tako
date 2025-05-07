@@ -106,13 +106,24 @@ On the right are the generated videos.
 If you find our work helpful for your research, please consider citing our work.   
 
 ```bibtex
-@misc{tan2025disentangleidentitycooperateemotion,
-      title={Disentangle Identity, Cooperate Emotion: Correlation-Aware Emotional Talking Portrait Generation}, 
-      author={Weipeng Tan and Chuming Lin and Chengming Xu and FeiFan Xu and Xiaobin Hu and Xiaozhong Ji and Junwei Zhu and Chengjie Wang and Yanwei Fu},
-      year={2025},
-      eprint={2504.18087},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2504.18087}, 
+@article{tan2025dicetalk,
+  title={Disentangle Identity, Cooperate Emotion: Correlation-Aware Emotional Talking Portrait Generation}, 
+  author={Tan, Weipeng and Lin, Chuming and Xu, Chengming and Xu, FeiFan and Hu, Xiaobin and Ji, Xiaozhong and Zhu, Junwei and Wang, Chengjie and Fu, Yanwei},
+  journal={arXiv preprint arXiv:2504.18087},
+  year={2025}
+}
+
+@article{ji2024sonic,
+  title={Sonic: Shifting Focus to Global Audio Perception in Portrait Animation},
+  author={Ji, Xiaozhong and Hu, Xiaobin and Xu, Zhihong and Zhu, Junwei and Lin, Chuming and He, Qingdong and Zhang, Jiangning and Luo, Donghao and Chen, Yi and Lin, Qin and others},
+  journal={arXiv preprint arXiv:2411.16331},
+  year={2024}
+}
+
+@article{ji2024realtalk,
+  title={Realtalk: Real-time and realistic audio-driven face generation with 3d facial prior-guided identity alignment network},
+  author={Ji, Xiaozhong and Lin, Chuming and Ding, Zhonggan and Tai, Ying and Zhu, Junwei and Hu, Xiaobin and Luo, Donghao and Ge, Yanhao and Wang, Chengjie},
+  journal={arXiv preprint arXiv:2406.18284},
+  year={2024}
 }
 ```
