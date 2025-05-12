@@ -18,9 +18,9 @@ frame_num: 10000
 step: 2
 overlap: 0
 shift_offset: 7
-min_appearance_guidance_scale: 4.0
-max_appearance_guidance_scale: 4.0
-audio_guidance_scale: 7.5
+min_appearance_guidance_scale: 3.0
+max_appearance_guidance_scale: 3.0
+audio_guidance_scale: 6.0
 i2i_noise_strength: 1.0
 ip_audio_scale: 1.0
 ip_emo_scale: 1.0
