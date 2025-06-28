@@ -25,4 +25,4 @@ if face_info['face_num'] >= 0:
         pipe.crop_image(args.image_path, crop_image_path, face_info['crop_bbox'])
         args.image_path = crop_image_path
     os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-    pipe.process(args.image_path, args.audio_path, args.emotion_path, args.output_path, min_resolution=512, inference_steps=25, ref_scale=args.ref_scale, emo_scale=args.emo_scale, seed=args.seed)
+    pipe.process(args.image_path, args.audio_path, args.emotion_path, args.output_path, min_resolution=256, inference_steps=20, ref_scale=args.ref_scale, emo_scale=args.emo_scale, seed=args.seed)
