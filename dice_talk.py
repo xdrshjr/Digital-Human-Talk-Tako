@@ -286,7 +286,8 @@ class DICE_Talk():
                 ref_scale=None,
                 emo_scale=None,
                 keep_resolution=False,
-                seed=None):
+                seed=None,
+                duration=None):
         
         config = self.config
         device = self.device
@@ -317,7 +318,7 @@ class DICE_Talk():
         imSrc_ = Image.open(image_path).convert('RGB')
         raw_w, raw_h = imSrc_.size
 
-        test_data = image_audio_emo_to_tensor(self.face_det, self.feature_extractor, image_path, audio_path, emotion_path, limit=config.frame_num, image_size=min_resolution, area=config.area)
+        test_data = image_audio_emo_to_tensor(self.face_det, self.feature_extractor, image_path, audio_path, emotion_path, limit=config.frame_num, image_size=min_resolution, area=config.area, duration=duration)
         if test_data is None:
             return -1
         height, width = test_data['ref_img'].shape[-2:]

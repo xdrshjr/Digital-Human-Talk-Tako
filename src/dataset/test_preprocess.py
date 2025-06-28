@@ -7,6 +7,16 @@ from transformers import CLIPImageProcessor
 import librosa
 
 
+def get_audio_duration(audio_path):
+    """Get audio duration in seconds"""
+    try:
+        audio_input, sampling_rate = librosa.load(audio_path, sr=16000)
+        return len(audio_input) / sampling_rate
+    except Exception as e:
+        print(f"Error getting audio duration: {e}")
+        return None
+
+
 def process_bbox(bbox, expand_radio, height, width):
     """
     raw_vid_path:
@@ -77,9 +87,26 @@ def process_bbox(bbox, expand_radio, height, width):
     return processed_bbox
 
 
-def get_audio_feature(audio_path, feature_extractor):
+def get_audio_feature(audio_path, feature_extractor, duration=None):
     audio_input, sampling_rate = librosa.load(audio_path, sr=16000)
     assert sampling_rate == 16000
+
+    original_duration = len(audio_input) / sampling_rate
+    print(f"Original audio duration: {original_duration:.2f} seconds")
+
+    # Apply duration trimming if specified
+    if duration is not None and duration > 0:
+        target_samples = int(duration * sampling_rate)
+        if len(audio_input) > target_samples:
+            # Trim audio to specified duration
+            audio_input = audio_input[:target_samples]
+            actual_duration = len(audio_input) / sampling_rate
+            print(f"Audio trimmed from {original_duration:.2f}s to {actual_duration:.2f}s (requested: {duration:.2f}s)")
+        else:
+            # Audio is shorter than requested duration, keep original
+            print(f"Audio duration {original_duration:.2f}s is shorter than requested {duration:.2f}s, using original audio")
+    else:
+        print(f"No duration specified, using full audio ({original_duration:.2f}s)")
 
     audio_features = []
     window = 750*640
@@ -92,7 +119,7 @@ def get_audio_feature(audio_path, feature_extractor):
     audio_features = torch.cat(audio_features, dim=-1)
     return audio_features, len(audio_input) // 640
 
-def image_audio_emo_to_tensor(align_instance, feature_extractor, image_path, audio_path, emotion_path, limit=100, image_size=512, area=1.25):
+def image_audio_emo_to_tensor(align_instance, feature_extractor, image_path, audio_path, emotion_path, limit=100, image_size=512, area=1.25, duration=None):
     
     clip_processor = CLIPImageProcessor()
     
@@ -140,7 +167,7 @@ def image_audio_emo_to_tensor(align_instance, feature_extractor, image_path, aud
     clip_image = clip_processor(
             images=imSrc.resize((224, 224), Image.LANCZOS), return_tensors="pt"
         ).pixel_values[0]
-    audio_input, audio_len = get_audio_feature(audio_path, feature_extractor)
+    audio_input, audio_len = get_audio_feature(audio_path, feature_extractor, duration)
 
     audio_len = min(limit, audio_len)
 

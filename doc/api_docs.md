@@ -60,6 +60,13 @@ DICE-Talk API 提供了基于人像图片和音频生成数字人视频的RESTfu
 | ref_scale | Float | 否 | 参考尺度 (0.0-10.0，默认3.0) |
 | emo_scale | Float | 否 | 情感尺度 (0.0-10.0，默认6.0) |
 | crop | Boolean | 否 | 是否裁剪图片 (默认false) |
+| inference_steps | Integer | 否 | 推理步数 (8-50，默认20) |
+| duration | Float | 否 | 视频时长，秒 (0.1-300.0，默认自动根据音频长度) |
+| fps | Integer | 否 | 视频帧率 (8-60，默认24) |
+| seed | Integer | 否 | 随机种子 (0-2147483647，默认随机) |
+| dynamic_scale | Float | 否 | 动态缩放因子 (0.1-3.0，默认1.0) |
+| min_resolution | Integer | 否 | 最小分辨率 (128-2048，默认256) |
+| expand_ratio | Float | 否 | 扩展比例 (0.1-2.0，默认0.5) |
 
 **情感类型列表**:
 - `contempt` - 轻蔑
@@ -88,7 +95,14 @@ curl -X POST "http://localhost:8000/api/v1/synthesis/start" \
   -F "emotion=happy" \
   -F "ref_scale=3.0" \
   -F "emo_scale=6.0" \
-  -F "crop=false"
+  -F "crop=false" \
+  -F "inference_steps=20" \
+  -F "duration=120" \
+  -F "fps=24" \
+  -F "seed=12345" \
+  -F "dynamic_scale=1.0" \
+  -F "min_resolution=256" \
+  -F "expand_ratio=0.5"
 ```
 
 **文件要求**:
@@ -255,7 +269,9 @@ import requests
 import time
 import os
 
-def synthesize_talking_portrait(image_path, audio_path, emotion="happy", ref_scale=3.0, emo_scale=6.0):
+def synthesize_talking_portrait(image_path, audio_path, emotion="happy", ref_scale=3.0, emo_scale=6.0, 
+                               inference_steps=20, duration=None, fps=24, seed=None, 
+                               dynamic_scale=1.0, min_resolution=256, expand_ratio=0.5):
     base_url = "http://localhost:8000"
     
     # 1. 检查服务状态
@@ -273,8 +289,19 @@ def synthesize_talking_portrait(image_path, audio_path, emotion="happy", ref_sca
             'emotion': emotion,
             'ref_scale': ref_scale,
             'emo_scale': emo_scale,
-            'crop': False
+            'crop': False,
+            'inference_steps': inference_steps,
+            'fps': fps,
+            'dynamic_scale': dynamic_scale,
+            'min_resolution': min_resolution,
+            'expand_ratio': expand_ratio
         }
+        
+        # 添加可选参数
+        if duration is not None:
+            data['duration'] = duration
+        if seed is not None:
+            data['seed'] = seed
         
         response = requests.post(f"{base_url}/api/v1/synthesis/start", files=files, data=data)
         response.raise_for_status()
@@ -315,12 +342,15 @@ if __name__ == "__main__":
         result = synthesize_talking_portrait(
             image_path="portrait.jpg",
             audio_path="speech.wav",
-            emotion="happy"
+            emotion="happy",
+            inference_steps=25,  # 使用更高的推理步数
+            fps=30,              # 使用更高的帧率
+            duration=60,         # 限制视频时长为60秒
+            seed=12345           # 使用固定种子确保可重复性
         )
         print(f"Success! Video saved to: {result}")
     except Exception as e:
         print(f"Error: {e}")
-```
 
 ---
 
@@ -329,7 +359,7 @@ if __name__ == "__main__":
 ### 性能参数
 
 - **并发任务数**: 最大2个同时处理的任务
-- **处理时间**: 根据音频长度，通常1分钟音频需要2-5分钟处理时间
+- **处理时间**: 根据音频长度和参数设置，通常1分钟音频需要2-5分钟处理时间
 - **GPU要求**: 建议使用NVIDIA GPU，至少8GB显存
 - **CPU处理**: 支持但速度较慢，不推荐生产使用
 
@@ -341,6 +371,14 @@ if __name__ == "__main__":
   - 音频: WAV, MP3
 - **任务队列**: 最多100个等待任务
 - **结果保存**: 视频文件保存24小时后自动清理
+
+### 参数建议
+
+1. **推理步数**: 更高的步数(25-35)提高质量但增加处理时间
+2. **帧率**: 24-30 FPS适合大多数用途，更高帧率增加文件大小
+3. **视频时长**: 建议不超过音频长度，过短可能导致内容截断
+4. **动态缩放**: 1.0为标准，1.2-1.5可增强表现力
+5. **随机种子**: 固定种子确保可重复结果，适合批量处理
 
 ### 建议
 
@@ -387,6 +425,12 @@ nvidia-smi
 
 ## 更新日志
 
+### v1.1.0 (2024-01-16)
+- **新增用户参数支持**: 支持推理步数、视频时长、帧率等用户自定义参数
+- **增强参数控制**: 用户可精确控制视频生成质量和特性
+- **改进缓存机制**: 基于完整参数集的智能缓存
+- **扩展API文档**: 详细说明所有可用参数及其用途
+
 ### v1.0.0 (2024-01-15)
 - 初始版本发布
 - 支持基本的数字人视频合成
@@ -405,4 +449,4 @@ nvidia-smi
 
 ---
 
-*本文档最后更新时间: 2024-01-15* 
+*本文档最后更新时间: 2024-01-16*

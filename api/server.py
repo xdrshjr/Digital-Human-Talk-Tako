@@ -2,7 +2,7 @@ import os
 import sys
 import shutil
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 import torch
 
@@ -105,7 +105,14 @@ async def start_synthesis(
     emotion: EmotionType = Form(..., description="Emotion type"),
     ref_scale: float = Form(3.0, description="Reference scale (0.0-10.0)"),
     emo_scale: float = Form(6.0, description="Emotion scale (0.0-10.0)"),
-    crop: bool = Form(False, description="Whether to crop the image")
+    crop: bool = Form(False, description="Whether to crop the image"),
+    inference_steps: int = Form(20, description="Number of inference steps (8-50)"),
+    duration: Optional[float] = Form(None, description="Video duration in seconds"),
+    fps: int = Form(24, description="Frames per second (8-60)"),
+    seed: Optional[int] = Form(None, description="Random seed for generation"),
+    dynamic_scale: float = Form(1.0, description="Dynamic scale factor (0.1-3.0)"),
+    min_resolution: int = Form(256, description="Minimum resolution (128-2048)"),
+    expand_ratio: float = Form(0.5, description="Expand ratio (0.1-2.0)")
 ):
     """Start a new synthesis task."""
     try:
@@ -118,6 +125,22 @@ async def start_synthesis(
             raise HTTPException(status_code=400, detail="ref_scale must be between 0.0 and 10.0")
         if not (0.0 <= emo_scale <= 10.0):
             raise HTTPException(status_code=400, detail="emo_scale must be between 0.0 and 10.0")
+        
+        # 验证新增参数
+        if not (8 <= inference_steps <= 50):
+            raise HTTPException(status_code=400, detail="inference_steps must be between 8 and 50")
+        if duration is not None and not (0.1 <= duration <= 300.0):
+            raise HTTPException(status_code=400, detail="duration must be between 0.1 and 300.0 seconds")
+        if not (8 <= fps <= 60):
+            raise HTTPException(status_code=400, detail="fps must be between 8 and 60")
+        if seed is not None and not (0 <= seed <= 2147483647):
+            raise HTTPException(status_code=400, detail="seed must be between 0 and 2147483647")
+        if not (0.1 <= dynamic_scale <= 3.0):
+            raise HTTPException(status_code=400, detail="dynamic_scale must be between 0.1 and 3.0")
+        if not (128 <= min_resolution <= 2048):
+            raise HTTPException(status_code=400, detail="min_resolution must be between 128 and 2048")
+        if not (0.1 <= expand_ratio <= 2.0):
+            raise HTTPException(status_code=400, detail="expand_ratio must be between 0.1 and 2.0")
         
         # Generate file paths
         image_content = await image.read()
@@ -147,21 +170,25 @@ async def start_synthesis(
         with open(audio_path, 'wb') as f:
             f.write(audio_content)
         
-        # Generate output path
-        output_filename = f"{image_hash}_{audio_hash}_{emotion.value}_{ref_scale}_{emo_scale}_{int(crop)}.mp4"
+        # Generate output path - include new parameters in filename for caching
+        param_hash = f"{ref_scale}_{emo_scale}_{int(crop)}_{inference_steps}_{duration or 'auto'}_{fps}_{seed or 'auto'}_{dynamic_scale}_{min_resolution}_{expand_ratio}"
+        output_filename = f"{image_hash}_{audio_hash}_{emotion.value}_{param_hash}.mp4"
         output_path = os.path.join(OUTPUT_DIR, output_filename)
         
         # Check if result already exists
         if os.path.exists(output_path):
             # Return existing result as completed task
             task_id = f"cached_{image_hash[:8]}_{audio_hash[:8]}"
+            original_task_id = f"{image_hash[:8]}_{audio_hash[:8]}"
+            logger.info(f"Returning cached result for task {task_id}: {output_path}")
             return TaskResponse(
                 task_id=task_id,
                 status=TaskStatus.COMPLETED,
-                message="Result already exists"
+                message="Result already exists",
+                original_task_id=original_task_id
             )
         
-        # Create synthesis task
+        # Create synthesis task with all parameters
         task_id = task_manager.create_task(
             image_path=image_path,
             audio_path=audio_path,
@@ -169,8 +196,17 @@ async def start_synthesis(
             output_path=output_path,
             ref_scale=ref_scale,
             emo_scale=emo_scale,
-            crop=crop
+            crop=crop,
+            inference_steps=inference_steps,
+            duration=duration,
+            fps=fps,
+            seed=seed,
+            dynamic_scale=dynamic_scale,
+            min_resolution=min_resolution,
+            expand_ratio=expand_ratio
         )
+        
+        logger.info(f"Created synthesis task {task_id} with parameters: ref_scale={ref_scale}, emo_scale={emo_scale}, inference_steps={inference_steps}, duration={duration}, fps={fps}, seed={seed}")
         
         # Note: File cleanup is now handled by the task manager after processing
         # to prevent premature deletion of files still needed by the synthesis process
@@ -193,13 +229,15 @@ async def get_task_status(task_id: str):
     """Get task status by ID."""
     # Handle cached results
     if task_id.startswith("cached_"):
+        original_id = task_id.replace("cached_", "")
         return TaskStatusResponse(
             task_id=task_id,
             status=TaskStatus.COMPLETED,
             progress=1.0,
             message="Cached result",
             created_at="",
-            updated_at=""
+            updated_at="",
+            original_task_id=original_id
         )
     
     status = task_manager.get_task_status(task_id)

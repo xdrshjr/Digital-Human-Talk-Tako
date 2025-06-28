@@ -25,7 +25,8 @@ class DiceTalkAPIClient:
             return {"error": str(e)}
     
     def start_synthesis(self, image_path, audio_path, emotion="happy", 
-                       ref_scale=3.0, emo_scale=6.0, crop=False):
+                       ref_scale=3.0, emo_scale=6.0, crop=False, duration=None,
+                       inference_steps=20, fps=24, seed=None):
         """启动合成任务"""
         try:
             with open(image_path, 'rb') as img, open(audio_path, 'rb') as aud:
@@ -37,8 +38,16 @@ class DiceTalkAPIClient:
                     'emotion': emotion,
                     'ref_scale': ref_scale,
                     'emo_scale': emo_scale,
-                    'crop': crop
+                    'crop': crop,
+                    'inference_steps': inference_steps,
+                    'fps': fps
                 }
+                
+                # Add optional parameters
+                if duration is not None:
+                    data['duration'] = duration
+                if seed is not None:
+                    data['seed'] = seed
                 
                 response = requests.post(
                     f"{self.base_url}/api/v1/synthesis/start", 
@@ -201,8 +210,76 @@ def quick_health_check():
         return True
 
 
+def test_duration_functionality():
+    """测试duration参数功能"""
+    client = DiceTalkAPIClient()
+    
+    print("🎬 测试duration参数功能")
+    print("=" * 50)
+    
+    # 健康检查
+    health = client.health_check()
+    if "error" in health:
+        print(f"❌ 服务不可用: {health['error']}")
+        return False
+    
+    example_image = "examples/img/nazha.png"
+    example_audio = "examples/wav/female-zh.wav"
+    
+    if not os.path.exists(example_image) or not os.path.exists(example_audio):
+        print("❌ 示例文件不存在")
+        return False
+    
+    # 测试duration=10秒
+    print("\n测试duration=10秒的视频生成...")
+    task_result = client.start_synthesis(
+        image_path=example_image,
+        audio_path=example_audio,
+        emotion="happy",
+        duration=2.0,
+        ref_scale=2.0,
+        emo_scale=5.0
+    )
+    
+    if "error" in task_result:
+        print(f"❌ 任务创建失败: {task_result['error']}")
+        return False
+    
+    print(f"✅ 任务创建成功 (ID: {task_result['task_id']})")
+    
+    # 等待完成
+    status_result = client.wait_for_completion(task_result['task_id'])
+    if "error" in status_result:
+        print(f"❌ 任务失败: {status_result['error']}")
+        return False
+    
+    # 下载结果
+    output_file = f"test_duration_{task_result['task_id'][:8]}.mp4"
+    download_result = client.download_result(task_result['task_id'], output_file)
+    
+    if "error" in download_result:
+        print(f"❌ 下载失败: {download_result['error']}")
+        return False
+    
+    print(f"✅ Duration测试完成，文件: {output_file}")
+    print(f"   文件大小: {os.path.getsize(output_file) / 1024 / 1024:.2f} MB")
+    
+    return True
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "health":
-        quick_health_check()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "health":
+            quick_health_check()
+        elif sys.argv[1] == "duration":
+            test_duration_functionality()
+        elif sys.argv[1] == "help":
+            print("使用方法:")
+            print("  python test_api.py          # 运行完整的API测试")
+            print("  python test_api.py health   # 快速健康检查")
+            print("  python test_api.py duration # 测试duration参数功能")
+            print("  python test_api.py help     # 显示帮助信息")
+        else:
+            print("未知参数，使用 'help' 查看使用方法")
     else:
         test_api() 
