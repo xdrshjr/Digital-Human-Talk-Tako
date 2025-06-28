@@ -1,0 +1,48 @@
+# DICE-Talk API Configuration
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  reload: false
+  log_level: "info"
+
+# GPU settings
+gpu:
+  device_id: 0  # -1 for CPU, 0+ for GPU device ID
+  enable_interpolate_frame: true
+
+# Task settings
+tasks:
+  max_workers: 2  # Maximum concurrent synthesis tasks
+  cleanup_delay: 300  # Seconds to wait before cleaning up files
+  max_task_history: 1000  # Maximum number of task records to keep
+
+# File settings
+files:
+  upload_dir: "uploads"
+  output_dir: "outputs"
+  max_image_size_mb: 10
+  max_audio_size_mb: 50
+  allowed_image_types: ["image/jpeg", "image/png"]
+  allowed_audio_types: ["audio/wav", "audio/mpeg", "audio/mp3"]
+
+# Processing settings
+synthesis:
+  default_ref_scale: 3.0
+  default_emo_scale: 6.0
+  min_resolution: 256
+  inference_steps: 20
+  expand_ratio: 0.5
+
+# Security settings
+security:
+  cors_origins: ["*"]
+  max_request_size: 100  # MB
+
+# Logging settings
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/api.log" 

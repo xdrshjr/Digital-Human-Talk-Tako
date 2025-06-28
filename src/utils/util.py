@@ -14,6 +14,8 @@ from PIL import Image
 import skvideo
 import skvideo.io
 import cv2
+import importlib.util
+import imageio
 
 
 class VideoUtils(object):
@@ -90,7 +92,8 @@ class VideoUtils(object):
         else:
             
             # fps = 25
-            codec_name = 'libx264'
+            # 动态检测可用的视频编码器
+            codec_name = get_available_video_codec()
             bit_rate=None
             pix_fmt = 'yuv420p'
 
@@ -100,6 +103,11 @@ class VideoUtils(object):
             # if bit_rate is not None:
             #     writer_output_dict['-b:v'] = bit_rate
             writer_output_dict['-crf'] = '17'
+            
+            # 只有在使用libx264时才添加这些选项
+            if codec_name == 'libx264':
+                writer_output_dict['-preset'] = 'fast'
+                writer_output_dict['-tune'] = 'zerolatency'
 
             # if video has alpha channel, convert to bgra, uint16 to process
             if pix_fmt.startswith('yuva'):
@@ -113,8 +121,8 @@ class VideoUtils(object):
                 reader_output_dict['-pix_fmt'] = 'bgr24'
 
             writer_output_dict['-sws_flags'] = 'full_chroma_int+bitexact+accurate_rnd'
-            print(writer_input_dict)
-            print(writer_output_dict)
+            print("Video output settings:", writer_input_dict)
+            print("Video codec settings:", writer_output_dict)
 
         if output_video_path is not None:
             self.writer = skvideo.io.FFmpegWriter(output_video_path, inputdict=writer_input_dict, outputdict=writer_output_dict, verbosity=1)
@@ -163,17 +171,95 @@ def delete_additional_ckpt(base_path, num_keep):
             shutil.rmtree(path_to_dir)
 
 
+def save_videos_from_pil_opencv_fallback(pil_images, path, fps=8):
+    """使用OpenCV作为备选的视频保存方法"""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    width, height = pil_images[0].size
+    
+    # 尝试不同的fourcc编码器，按优先级排序
+    fourcc_options = [
+        ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),  # MPEG-4 (最兼容)
+        ('XVID', cv2.VideoWriter_fourcc(*'XVID')),  # XVID
+        ('MJPG', cv2.VideoWriter_fourcc(*'MJPG')),  # Motion JPEG
+        ('X264', cv2.VideoWriter_fourcc(*'X264')),  # H.264
+        ('DIVX', cv2.VideoWriter_fourcc(*'DIVX')),  # DIVX
+        ('FMP4', cv2.VideoWriter_fourcc(*'FMP4')),  # FFMPEG MPEG-4
+        ('YUV2', cv2.VideoWriter_fourcc(*'YUV2')),  # YUV
+    ]
+    
+    for codec_name, fourcc in fourcc_options:
+        try:
+            print(f"🎬 Trying OpenCV codec: {codec_name}")
+            out = cv2.VideoWriter(path, fourcc, fps, (width, height))
+            if out.isOpened():
+                print(f"✅ OpenCV codec {codec_name} initialized successfully")
+                
+                # 写入所有帧
+                for i, pil_image in enumerate(pil_images):
+                    # Convert PIL to OpenCV format (BGR)
+                    frame = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+                    out.write(frame)
+                    if i % 10 == 0:  # 每10帧打印一次进度
+                        print(f"📝 Written frame {i+1}/{len(pil_images)}")
+                
+                out.release()
+                print(f"✅ Video saved successfully with OpenCV using {codec_name}")
+                return True
+            else:
+                out.release()
+                print(f"❌ OpenCV codec {codec_name} failed to initialize")
+        except Exception as e:
+            print(f"❌ OpenCV codec {codec_name} failed: {e}")
+            continue
+    
+    print("❌ All OpenCV codecs failed")
+    return False
+
+
 def save_videos_from_pil(pil_images, path, fps=8):
     save_fmt = Path(path).suffix
     os.makedirs(os.path.dirname(path), exist_ok=True)
     width, height = pil_images[0].size
 
     if save_fmt == ".mp4":
-        video_cap = VideoUtils(output_video_path=path, fps=fps)
-        for pil_image in pil_images:
-            image_cv2 = np.array(pil_image)[:,:,[2,1,0]]
-            video_cap.writeframe(image_cv2)
-        video_cap.writeframe(None)
+        # 首先尝试使用VideoUtils (ffmpeg)
+        ffmpeg_success = False
+        ffmpeg_error = None
+        try:
+            print("🎬 Attempting to save video using ffmpeg...")
+            video_cap = VideoUtils(output_video_path=path, fps=fps)
+            for pil_image in pil_images:
+                image_cv2 = np.array(pil_image)[:,:,[2,1,0]]
+                video_cap.writeframe(image_cv2)
+            video_cap.writeframe(None)
+            print("✅ Video saved successfully using ffmpeg")
+            ffmpeg_success = True
+        except Exception as e:
+            print(f"⚠️ ffmpeg failed during video processing: {e}")
+            ffmpeg_error = str(e)
+            ffmpeg_success = False
+        
+        # 如果 ffmpeg 失败，使用 OpenCV 备用方案
+        if not ffmpeg_success:
+            print("🔄 Trying OpenCV fallback...")
+            opencv_success = False
+            opencv_error = None
+            try:
+                if save_videos_from_pil_opencv_fallback(pil_images, path, fps):
+                    print("✅ Video saved successfully using OpenCV")
+                    opencv_success = True
+                else:
+                    opencv_error = "All OpenCV codecs failed to initialize"
+            except Exception as opencv_err:
+                opencv_error = str(opencv_err)
+                print(f"❌ OpenCV also failed: {opencv_err}")
+            
+            # 如果两种方法都失败了，提供详细的错误信息
+            if not opencv_success:
+                error_msg = f"Failed to save MP4 video. FFmpeg error: {ffmpeg_error}. OpenCV error: {opencv_error}. "
+                error_msg += "Please check your video codec installation (ffmpeg/libx264) or system compatibility."
+                print(f"❌ {error_msg}")
+                raise Exception(error_msg)
 
     elif save_fmt == ".gif":
         pil_images[0].save(
@@ -233,3 +319,29 @@ def get_fps(video_path):
     fps = video_stream.average_rate
     container.close()
     return fps
+
+
+def check_ffmpeg_codec(codec_name):
+    """检查ffmpeg是否支持指定的编码器"""
+    try:
+        import subprocess
+        result = subprocess.run(['ffmpeg', '-encoders'], 
+                              capture_output=True, text=True, timeout=10)
+        return codec_name in result.stdout
+    except:
+        return False
+
+
+def get_available_video_codec():
+    """获取可用的视频编码器"""
+    # 按优先级顺序检查编码器
+    codecs = ['libx264', 'mpeg4', 'libxvid', 'rawvideo']
+    
+    for codec in codecs:
+        if check_ffmpeg_codec(codec):
+            print(f"Using video codec: {codec}")
+            return codec
+    
+    # 如果都不可用，返回默认值并打印警告
+    print("Warning: No preferred codecs found, using libx264 (may fail)")
+    return 'libx264'
